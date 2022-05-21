@@ -1,67 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import 'features/coffe_item/cofee_item_page.dart';
+import 'features/login/login_page.dart';
+import 'features/page1/page1.dart';
+import 'features/page2/page2.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
+}
+
+final loginInfo = LoginInfo();
+
+class LoginInfo extends ChangeNotifier {
+  var _isLoggedIn = false;
+
+  bool get isLoggedIn => _isLoggedIn;
+  set isLoggedIn(bool value) {
+    _isLoggedIn = value;
+    notifyListeners();
+  }
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  MyApp({
+    Key? key,
+  }) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
+  final GoRouter _router = GoRouter(
+    debugLogDiagnostics: true,
+    redirect: (state) {
+      final loggedIn = loginInfo._isLoggedIn;
+      final isLogging = state.location == '/login';
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+      if (!loggedIn && !isLogging) return '/login';
+      if (loggedIn && isLogging) return '/';
 
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+      return null;
+    },
+    refreshListenable: loginInfo,
+    urlPathStrategy: UrlPathStrategy.path,
+    errorPageBuilder: (context, state) {
+      return MaterialPage(
+        key: state.pageKey,
+        child: Scaffold(
+          body: Center(
+            child: Text(state.error.toString()),
+          ),
+        ),
+      );
+    },
+    routes: <GoRoute>[
+      GoRoute(
+        name: 'login',
+        path: '/login',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: LoginPage(),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      GoRoute(
+        name: 'home',
+        path: '/',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const Page1(),
+        ),
       ),
-    );
-  }
+      GoRoute(
+          name: 'menu',
+          path: '/page2',
+          builder: (BuildContext context, GoRouterState state) => Page2(),
+          routes: [
+            GoRoute(
+              name: 'details',
+              path: ':id', //menu/id
+              pageBuilder: (context, state) {
+                final id = int.parse(state.params['id']!);
+                return MaterialPage(
+                  key: state.pageKey,
+                  child: CoffeItemPage(id: id),
+                );
+              },
+            )
+          ]),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
+        routeInformationParser: _router.routeInformationParser,
+        routerDelegate: _router.routerDelegate,
+        title: 'GoRouter Example',
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
+      );
 }
